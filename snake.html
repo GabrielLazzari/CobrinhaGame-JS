@@ -276,16 +276,23 @@
             eventoTecla = evt || window.event;
             eventoTecla = eventoTecla.key;
 
-            if (eventoTecla == "d" && lisJogadores[0][0] != 2){lisJogadores[0][0] = 1;}
-            if (eventoTecla == "a" && lisJogadores[0][0] != 1){lisJogadores[0][0] = 2;}
-            if (eventoTecla == "w" && lisJogadores[0][0] != 4){lisJogadores[0][0] = 3;}
-            if (eventoTecla == "s" && lisJogadores[0][0] != 3){lisJogadores[0][0] = 4;}
+            if (modoJogo != "espectador"){
+                if (eventoTecla == "d" && lisJogadores[0][0] != 2){lisJogadores[0][0] = 1;}
+                if (eventoTecla == "a" && lisJogadores[0][0] != 1){lisJogadores[0][0] = 2;}
+                if (eventoTecla == "w" && lisJogadores[0][0] != 4){lisJogadores[0][0] = 3;}
+                if (eventoTecla == "s" && lisJogadores[0][0] != 3){lisJogadores[0][0] = 4;}
 
-            if (modoJogo == "doisjogadores"){
-                if (eventoTecla == "ArrowRight" && lisJogadores[1][0] != 2){lisJogadores[1][0] = 1;}
-                if (eventoTecla == "ArrowLeft"  && lisJogadores[1][0] != 1){lisJogadores[1][0] = 2;}
-                if (eventoTecla == "ArrowUp"    && lisJogadores[1][0] != 4){lisJogadores[1][0] = 3;}
-                if (eventoTecla == "ArrowDown"  && lisJogadores[1][0] != 3){lisJogadores[1][0] = 4;}
+                if (modoJogo == "doisjogadores"){
+                    if (eventoTecla == "ArrowRight" && lisJogadores[1][0] != 2){lisJogadores[1][0] = 1;}
+                    if (eventoTecla == "ArrowLeft"  && lisJogadores[1][0] != 1){lisJogadores[1][0] = 2;}
+                    if (eventoTecla == "ArrowUp"    && lisJogadores[1][0] != 4){lisJogadores[1][0] = 3;}
+                    if (eventoTecla == "ArrowDown"  && lisJogadores[1][0] != 3){lisJogadores[1][0] = 4;}
+                }else if (modoJogo == "umjogador" || "xcomputador"){
+                    if (eventoTecla == "ArrowRight" && lisJogadores[0][0] != 2){lisJogadores[0][0] = 1;}
+                    if (eventoTecla == "ArrowLeft"  && lisJogadores[0][0] != 1){lisJogadores[0][0] = 2;}
+                    if (eventoTecla == "ArrowUp"    && lisJogadores[0][0] != 4){lisJogadores[0][0] = 3;}
+                    if (eventoTecla == "ArrowDown"  && lisJogadores[0][0] != 3){lisJogadores[0][0] = 4;}
+                }
             }
 
             if (eventoTecla == 'Enter'){
