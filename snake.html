@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+    <style>
+
+        *{
+            margin: 0px;
+            padding:  0px;
+        }
+
+        .d1{
+            margin: 0px;
+            padding: 0px;
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: darkolivegreen;
+            text-align: center;
+        }
+
+        #item{
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            text-align: center;
+        }
+
+        .menu{
+            position: absolute;
+            height: 100%;
+            width: 130px;
+            background-color: rgb(180, 243, 78);
+            z-index: 2;
+            padding-left: auto;
+            padding-right: auto;
+            text-align: center;
+        }
+
+        #tabuleiro{
+            position: absolute;
+            height: 100%;
+            width: 100%;
+            background-color: rgb(50, 50, 50);
+            z-index: 1;
+        }
+
+        #pontuacao{
+            position: absolute;
+            z-index: 2;
+            left: 47%;
+            background-color: rgb(180, 243, 78);
+        }
+        
+        .bt{
+            border: 4px solid rgb(210, 132, 30);
+            background-color: rgb(255, 251, 0);
+            width: 100px;
+            height: 18px;
+            margin: 10px;
+            box-shadow: rgb(122, 122, 122) 0px 5px 20px;
+        }
+        .bt:hover{
+            background-color: rgb(255, 210, 0);
+        }
+
+        .modo{
+            width: 20px;
+            height: 20px;
+            margin: 5px;
+            display: inline-block;
+            background-color: rgb(255, 251, 0);
+            border: 4px solid rgb(210, 132, 30);
+            box-shadow: rgb(122, 122, 122) 0px 5px 20px;
+        }
+        .modo:hover{
+            background-color: rgb(255, 210, 0);
+        }
+        .modo.escolhido{
+            border: 4px solid rgb(69, 69, 105);
+        }
+
+        #menuPausado{
+            display: none;
+        }
+
+        #play{
+            position: relative;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            margin-left: auto;
+            margin-right: auto;
+            /*background-color: rgb(70, 70, 158);*/
+            background-image: linear-gradient(145deg, rgb(196, 195, 195) 1%, green, black);
+            box-shadow: rgb(122, 122, 122) 2px 22px 30px;
+        }
+        #play:hover{
+            top: -5px;
+            width: 56px;
+            height: 56px;
+        }
+        
+        
+    </style>
+
+</head>
+<body>
+    
+    <div id="tabuleiro"></div>
+
+    <div class="menu" id="menuInicio">
+        <div class="bt">Personalização</div>
+        <div class="bt">Configurações</div>
+        <div class="bt">Conquistas</div>
+        <br><br>
+        <div class="modo" id="single" onclick="escolhaModoJogo('umjogador')"     title="Um Jogador"></div>
+        <div class="modo" id="multi"  onclick="escolhaModoJogo('doisjogadores')" title="Dois Jogadores"></div>
+        <div class="modo" id="xpc"    onclick="escolhaModoJogo('xcomputador')"   title="xComputador"></div>
+        <div class="modo" id="espect" onclick="escolhaModoJogo('espectador')"   title="Espectador"></div>
+        <br><br>
+        <div id="play" onclick="comecar()" title="Jogar">
+            <svg width="50" height="50">
+                <polygon points="17,10 17,40 40,26"
+                         style="fill:rgb(32, 41, 124);fill-rule:evenodd;"/>
+            </svg>
+        </div>
+        <p>Pressione enter para jogar</p>
+        <br>
+        <p id="info"></p>
+    </div>
+
+    <div class="menu" id="menuPausado">
+        <div class="bt" onclick="comecar()">Continuar</div>
+        <div class="bt" onclick="finalizarPartida()">Finalizar</div>
+    </div>
+
+    <div id="pontuacao"></div>
+
+
+    <script>
+
+        var estiloJogador1 = "🚗";
+        var estiloJogador2 = "🚙";
+
+        tabuleiro = document.getElementById("tabuleiro");
+        menuInicio = document.getElementById('menuInicio');
+        menuPausado = document.getElementById("menuPausado");
+        pontuacao = document.getElementById('pontuacao');
+
+        modoJogo = "xcomputador" ; // umjogador, doisjogadores, xcomputador, espectador
+        quantidadeJogadores = 2;
+        jogando = 0;  // Se o jogo começou e não esta pausado
+
+        velocidade = 10; //Quantos pixels a cobrinha se move por vez
+        velocidadeTime = 50; // Fps
+
+        lisJogadores = []; // Para cada cobrinha
+        lisItens = [];  // Comida e itens
+        
+        var lisIntervals=[0, [0, 0], [0, 0]]; // O intervalo em execuçao do jogo e dos efeitos da cobrinha
+        // Onde pos 0 é o evento do jogo, 1 evento de desacelarar, 2 evento de velocidade
+        var lisTmpIntervals = [0, [0, 0], [0, 0]]; // tempo decorrente do efeito
+        //onde pos 0 não é nada e as outras duas para cada dentro é um efeito do jogador, conta quanto vai durar o efeito
+        armazena1x = 0; armazena1y = 0; armazena2x = 0; armazena2y = 0;
+
+
+        // =====================================================================
+        // PARA OS MENUS
+
+        let d = {'umjogador': document.getElementById('single'),
+                 'doisjogadores': document.getElementById('multi'),
+                 'xcomputador': document.getElementById('xpc'),
+                 'espectador': document.getElementById('espect')};
+
+        escolhaModoJogo(modoJogo);
+        function escolhaModoJogo(modo){
+            for (const [chave, valor] of Object.entries(d)){
+                if (chave == modo){
+                    d[chave].classList.add("escolhido");
+                }else{
+                    d[chave].classList.remove("escolhido");
+                }
+            }
+            modoJogo = modo;
+            if (modo == 'umjogador'){
+                quantidadeJogadores = 1;
+            }else{
+                quantidadeJogadores = 2;
+            }
+            finalizarPartida();
+        }
+
+        // =====================================================================
+        // PARA O JOGO
+
+        //             1: +left; 2: -left; 3: -top; 4: +top
+        //                  Para onde esta indo   Se tem algum efeito   Elementos da cobrinha
+        //lisJogadores = [[direcao(1,2,3,4),     (0,1,2,3,...),        [[x,y], [x,y],...]],
+        //                [direcao(1,2,3,4),     (0,1,2,3,...),        [[x,y], [x,y],...]]]
+
+
+        // CRIA A(AS) COBRINHA(S)
+        function criarCobrinha(){
+            for (var c = 0; c < quantidadeJogadores; c++){
+                lisJogadores.push([]);
+                lisJogadores[c].push(1);
+                lisJogadores[c].push(0);
+                lisJogadores[c].push([]);
+                adicionarElemento(c);
+            }
+            geraItem('darkred', "🍎");  // Gera o item inicial
+        }
+
+        // GERAR POSICAO ALEATORIA X E Y
+        function geraPosicao(){
+            itemx = Math.floor(10 + Math.random()*(window.innerWidth -20 - 10));
+            itemy = Math.floor(10 + Math.random()*(window.innerHeight -20 - 10));
+            return [itemx, itemy];
+        }
+
+        // ADICIONA UM TAMANHO NA COBRINHA
+        function adicionarElemento(jogador){
+            el = document.createElement("DIV");
+            el.setAttribute('class', 'd1');
+            if (jogador == 0){
+                el.innerHTML = estiloJogador1;
+            }else{
+                el.innerHTML = estiloJogador2;
+            }
+
+            el.style.left = geraPosicao()[0] + "px";
+            el.style.top = geraPosicao()[1] + "px";
+            
+            lisJogadores[jogador][2].push(el);
+            
+            for (var c = 0; c < lisJogadores[jogador][2].length; c++){
+                tabuleiro.appendChild(lisJogadores[jogador][2][c]);
+            }
+        }
+
+
+        // REMOVE UM TAMNHO DA COBRINHA
+        function removerElemento(jogador){
+            if (lisJogadores[jogador][2].length > 1){
+                lisJogadores[jogador][2][lisJogadores[jogador][2].length-1].remove();
+                lisJogadores[jogador][2].pop();
+                return "removeu";
+            }
+            return "naoremoveu";
+        }
+
+
+        // CRIAR ITEM NA TELA
+        function geraItem(cor, icone){
+            item = document.createElement("DIV");
+            item.setAttribute('id', 'item');
+            item.innerHTML = icone;
+            item.style.backgroundColor = cor;
+            item.style.left = geraPosicao()[0] + "px";
+            item.style.top = geraPosicao()[1] + "px";
+
+            tabuleiro.appendChild(item);
+            lisItens.push(item);
+        }
+        
+
+
+
+        // DETECCAO DO TECLADO
+        document.onkeydown = function(evt) {
+            eventoTecla = evt || window.event;
+            eventoTecla = eventoTecla.key;
+
+            if (eventoTecla == "d" && lisJogadores[0][0] != 2){lisJogadores[0][0] = 1;}
+            if (eventoTecla == "a" && lisJogadores[0][0] != 1){lisJogadores[0][0] = 2;}
+            if (eventoTecla == "w" && lisJogadores[0][0] != 4){lisJogadores[0][0] = 3;}
+            if (eventoTecla == "s" && lisJogadores[0][0] != 3){lisJogadores[0][0] = 4;}
+
+            if (modoJogo == "doisjogadores"){
+                if (eventoTecla == "ArrowRight" && lisJogadores[1][0] != 2){lisJogadores[1][0] = 1;}
+                if (eventoTecla == "ArrowLeft"  && lisJogadores[1][0] != 1){lisJogadores[1][0] = 2;}
+                if (eventoTecla == "ArrowUp"    && lisJogadores[1][0] != 4){lisJogadores[1][0] = 3;}
+                if (eventoTecla == "ArrowDown"  && lisJogadores[1][0] != 3){lisJogadores[1][0] = 4;}
+            }
+
+            if (eventoTecla == 'Enter'){
+                comecar();
+            }
+        }
+
+
+        // MUDAR SE ESTA JOGANDO OU NAO
+        function comecar(){
+            if (jogando == 0){
+                lisIntervals[0] = setInterval(loop, velocidadeTime);
+                jogando = 1;
+                menuInicio.style.display = 'none';
+                menuPausado.style.display = "none";
+            }else{
+                clearInterval(lisIntervals[0]);
+                jogando = 0;
+                menuPausado.style.display = "block";
+            }
+        }
+
+        function finalizarPartida(){
+            tabuleiro.innerHTML = "";
+            pontuacao.innerHTML = "";
+            lisJogadores = [];
+            lisItens = [];
+            lisIntervals=[0, [0, 0], [0, 0]];
+            lisTmpIntervals = [0, [0, 0], [0, 0]];
+            armazena1x = 0; armazena1y = 0; armazena2x = 0; armazena2y = 0;
+            menuPausado.style.display = "none";
+            criarCobrinha();
+            menuInicio.style.display = 'block';
+        }
+
+
+        // LOOP PRINCIPAL
+        function loop(){
+            if (quantidadeJogadores == 2){
+                // Atualiza as pontuações na tela
+                pontuacao.innerHTML = estiloJogador1 + " " + lisJogadores[0][2].length;
+                pontuacao.innerHTML += " - " + lisJogadores[1][2].length + " " + estiloJogador2;
+            }else{
+                pontuacao.innerHTML = estiloJogador1 + " " + lisJogadores[0][2].length;
+            }
+            
+            // MINI IA
+            if (modoJogo == 'xcomputador'){
+                // Jogador na posicao 1 sera controlado pelo pc
+                miniIA(1);
+            }
+
+            //Loop para cada cobrinha no jogo
+            for (var jogador = 0; jogador < lisJogadores.length; jogador++){
+                if (modoJogo == 'espectador'){
+                    miniIA(jogador);
+                }
+                
+                l = lisJogadores[jogador][2][0].getBoundingClientRect().left; // Recupera a poxicao x da cabeca da cobrinha
+                t = lisJogadores[jogador][2][0].getBoundingClientRect().top; // Recupera a poxicao y da cabeca da cobrinha
+
+                // Efeitos de mudanca de velocidade na cobrinha
+                if (lisJogadores[jogador][1] == 0){ // Padrão
+                    velocidade = 10;
+                }else{
+                    if (lisJogadores[jogador][1] == 1){ // Efeito congelar
+                        velocidade = 0;
+                    }else{
+                        if (lisJogadores[jogador][1] == 2){ // Efeito acelerar
+                            velocidade = 15;
+                        }
+                    }
+                }
+
+
+                //Para qual lado ir, Para quando muda de direcao
+                if (lisJogadores[jogador][0] == 1){
+                    l += velocidade;
+                    if (l >= tabuleiro.getBoundingClientRect().width - lisJogadores[jogador][2][0].getBoundingClientRect().width-10){
+                        l = 0;
+                    }
+                }
+                else if (lisJogadores[jogador][0] == 2){
+                    l -= velocidade;
+                    if (l <= 0){
+                        l = tabuleiro.getBoundingClientRect().width - lisJogadores[jogador][2][0].getBoundingClientRect().width-15;
+                    }
+                }
+                else if (lisJogadores[jogador][0] == 3){
+                    t -= velocidade;
+                    if (t <= 0){
+                        t = tabuleiro.getBoundingClientRect().height - lisJogadores[jogador][2][0].getBoundingClientRect().height-15;
+                    }
+                }
+                else if (lisJogadores[jogador][0] == 4){
+                    t += velocidade;
+                    if (t >= tabuleiro.getBoundingClientRect().height - lisJogadores[jogador][2][0].getBoundingClientRect().height-10){
+                        t = 0;
+                    }
+                }
+
+                
+                // Para o efeito visual da cobrinha, para cada elemento de uma cobrinha
+                for (var c = 0; c < lisJogadores[jogador][2].length; c++){
+                    if (c%2 == 0){
+                        // armazena1, utiliza2
+                        armazena1x = lisJogadores[jogador][2][c].getBoundingClientRect().left;
+                        armazena1y = lisJogadores[jogador][2][c].getBoundingClientRect().top;
+
+                        if (c == 0){
+                            lisJogadores[jogador][2][0].style.left =  l + "px";
+                            lisJogadores[jogador][2][0].style.top = t + "px";
+
+                        }else{
+                            lisJogadores[jogador][2][c].style.left = armazena2x + "px";
+                            lisJogadores[jogador][2][c].style.top = armazena2y + "px";
+                        }
+                    }else{
+                        // armazena2, utiliza1
+                        armazena2x = lisJogadores[jogador][2][c].getBoundingClientRect().left;
+                        armazena2y = lisJogadores[jogador][2][c].getBoundingClientRect().top;
+                        lisJogadores[jogador][2][c].style.left = armazena1x + "px";
+                        lisJogadores[jogador][2][c].style.top = armazena1y + "px";
+                    }
+                }
+
+
+                // Colisão entre cobrinhas
+                if (quantidadeJogadores > 1){
+                    outroJogador = 0;
+                    if (jogador == 0){
+                        outroJogador = 1;
+                    }
+                    for (var e = 1; e < lisJogadores[outroJogador][2].length; e++){
+                        if (lisJogadores[jogador][2][0].getBoundingClientRect().left + lisJogadores[jogador][2][0].getBoundingClientRect().width > lisJogadores[outroJogador][2][e].getBoundingClientRect().left
+                        && lisJogadores[jogador][2][0].getBoundingClientRect().top + lisJogadores[jogador][2][0].getBoundingClientRect().height > lisJogadores[outroJogador][2][e].getBoundingClientRect().top
+                        && lisJogadores[jogador][2][0].getBoundingClientRect().left < lisJogadores[outroJogador][2][e].getBoundingClientRect().left + 10 
+                        && lisJogadores[jogador][2][0].getBoundingClientRect().top < lisJogadores[outroJogador][2][e].getBoundingClientRect().top +10){
+                            if (lisJogadores[jogador][1] == 2){
+                                adicionarElemento(jogador);
+                                removerElemento(outroJogador);
+                            }else{
+                                removerElemento(jogador);
+                            }
+                        }
+                    }
+                }
+
+
+                // Colisao entre cobrinha e item
+                for (var c = 0; c < lisItens.length; c++){
+                    if (lisJogadores[jogador][2][0].getBoundingClientRect().left + lisJogadores[jogador][2][0].getBoundingClientRect().width > lisItens[c].getBoundingClientRect().left
+                    && lisJogadores[jogador][2][0].getBoundingClientRect().top + lisJogadores[jogador][2][0].getBoundingClientRect().height > lisItens[c].getBoundingClientRect().top
+                    && lisJogadores[jogador][2][0].getBoundingClientRect().left < lisItens[c].getBoundingClientRect().left + 10 
+                    && lisJogadores[jogador][2][0].getBoundingClientRect().top < lisItens[c].getBoundingClientRect().top +10){
+                        lisItens[c].remove();  // Remove o item do documento html
+                        // O que fazer em cada que item que colidir
+                        if (lisItens[c].innerHTML == "🍎"){
+                            adicionarElemento(jogador);
+                            geraItem('darkred', "🍎");
+                        }
+                        if (lisItens[c].innerHTML == "🍆"){
+                            if (modoJogo != 'umjogador'){
+                                for (var j = 0; j < lisJogadores.length; j++){
+                                    if (j != jogador){
+                                        if (lisTmpIntervals[1][jogador] == 0){
+                                            adicionarEfeito(j, 1); // Dura tres segundos
+                                        }
+                                    }
+                                }
+                            }else{
+                                adicionarEfeito(jogador, 1); // Dura tres segundos
+                            }
+                        }
+                        if (lisItens[c].innerHTML == "🍍"){
+                            if (lisTmpIntervals[2][jogador] == 0){
+                                adicionarEfeito(jogador, 2); // Dura tres segundos
+                            }
+                        }
+                        if (lisItens[c].innerHTML == "🍑"){
+                            removeu = "naoremoveu"; // Não precisa de tempo, é instantaneo
+                            for (var j = 0; j < lisJogadores.length; j++){
+                                if (j != jogador){
+                                    removeu = removerElemento(j);
+                                }
+                            }
+                            if (removeu == "removeu"){
+                                adicionarElemento(jogador);
+                            }
+                        }
+                        // Apaga da lista o item que sofreu colisao
+                        lisItens.splice(c, 1);
+                    }
+                }
+
+                
+                // Chance de cada item aparecer na tela, exceto a maca
+                porcentamgem = Math.floor(Math.random() * 1000);
+                if (porcentamgem > 9 && porcentamgem < 16){
+                    adicionarItem('rgb(175, 172, 13)', "🍍");
+                }
+                if (porcentamgem > 3 && porcentamgem < 8){
+                    adicionarItem('darkblue', "🍆");
+                }
+                if (porcentamgem > 0 && porcentamgem < 3){
+                    adicionarItem('darkorange', "🍑");
+                }
+                            
+            }
+
+            // Para ganhar, ou 5 de diferenca entre os jogadores ou quem chegar ate 25 primeiro
+            if (quantidadeJogadores > 1){
+                if ((lisJogadores[0][2].length - lisJogadores[1][2].length) <= -5 || lisJogadores[1][2].length == 25){
+                    pontuacao.innerHTML = "Jogador 2 Ganhou!";
+                    comecar();
+                }else{
+                    if ((lisJogadores[0][2].length - lisJogadores[1][2].length) >= 5 || lisJogadores[0][2].length == 25){
+                        pontuacao.innerHTML = "Jogador 1 Ganhou!";
+                        comecar();
+                    }
+                }
+            }else{
+                if (lisJogadores[0][2].length >= 5){
+                    pontuacao.innerHTML = "Fim!";
+                    comecar();
+                }
+            }
+        }
+
+        //Verifica se ja nao tem algum item antes de adicionar
+        function adicionarItem(cor, tipoItem){
+            for (var e = 0; e < lisItens.length; e++){
+                if (lisItens[e].innerHTML == tipoItem){
+                    break;
+                }
+                if (e == lisItens.length-1){
+                    geraItem(cor, tipoItem);
+                }
+            }
+        }
+        
+
+        //Alguns efeitos duram 3 segundos
+        function adicionarEfeito(jogador, tipoEfeito){
+            lisJogadores[jogador][1] = tipoEfeito;
+            
+            lisIntervals[tipoEfeito][jogador] = setInterval(function(){
+                lisTmpIntervals[tipoEfeito][jogador] ++;
+                if (lisTmpIntervals[tipoEfeito][jogador] == 3){
+                    clearInterval(lisIntervals[tipoEfeito][jogador]);
+                    lisJogadores[jogador][1] = 0;
+                    lisTmpIntervals[tipoEfeito][jogador] = 0;
+                }
+
+            }, 1000);
+        }
+
+
+        // PEQUENA MOVIMENTACAO NA COBRINHA CONTROLADA PELO PC
+        function miniIA(jogadorPc){
+            // Vai atras do item mais perto
+            menor = 0;
+            posMenor = 0;
+            for (var m =0 ; m < lisItens.length; m++){
+                operacao = (lisItens[m].getBoundingClientRect().left - lisJogadores[jogadorPc][2][0].getBoundingClientRect().left) + (lisItens[m].getBoundingClientRect().left - lisJogadores[jogadorPc][2][0].getBoundingClientRect().left);
+                if (operacao < 0){
+                    operacao = operacao*-1;
+                }
+                if (m == 0){
+                    menor = operacao;
+                    posMenor = m;
+                }else{
+                    if (operacao < menor){
+                        menor = operacao;
+                        posMenor = m;
+                    }
+                }
+            }
+
+            // Gera uma pequna aleatoriedade as vezes mudando o curso
+            porcent = Math.floor(Math.random() * 1000);
+            if (porcent < 30){
+                lisJogadores[jogadorPc][0] = Math.floor(1 + Math.random()*(4 - 1));
+            }
+            
+            // Parte do eixo em que se encontra, apenas com duas curvas simples ate o item
+            // 1: +left; 2: -left; 3: -top; 4: +top
+            if ((lisJogadores[jogadorPc][2][0].getBoundingClientRect().left - lisItens[posMenor].getBoundingClientRect().left) < 10 
+            && (lisJogadores[jogadorPc][2][0].getBoundingClientRect().left - lisItens[posMenor].getBoundingClientRect().left) > -10){
+                if (lisJogadores[jogadorPc][2][0].getBoundingClientRect().top < lisItens[posMenor].getBoundingClientRect().top){
+                    if (lisJogadores[jogadorPc][0] != 3){
+                        lisJogadores[jogadorPc][0] = 4;  // +top
+                    }
+                }else{
+                    if (lisJogadores[jogadorPc][0] != 4){
+                        lisJogadores[jogadorPc][0] = 3;  // -top
+                    }
+                }
+            }
+            if ((lisJogadores[jogadorPc][2][0].getBoundingClientRect().top - lisItens[posMenor].getBoundingClientRect().top) < 10 &&
+            (lisJogadores[jogadorPc][2][0].getBoundingClientRect().top - lisItens[posMenor].getBoundingClientRect().top) > -10){
+                if (lisJogadores[jogadorPc][2][0].getBoundingClientRect().left > lisItens[posMenor].getBoundingClientRect().left){
+                    if (lisJogadores[jogadorPc][0] != 1){
+                        lisJogadores[jogadorPc][0] = 2;  // -left
+                    }
+                }else{
+                    if (lisJogadores[jogadorPc][0] != 2){
+                        lisJogadores[jogadorPc][0] = 1;  // +left
+                    }
+                }
+            }
+        }
+
+    </script>
+    
+</body>
+</html>
+
